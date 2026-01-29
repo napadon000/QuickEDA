@@ -13,3 +13,15 @@ def ensure_state():
     if "filters" not in st.session_state:
         # simple filters: dict[col] = (op, value)
         st.session_state.filters = {}
+    
+    # Initialize column-related session state
+    if "pool_cols" not in st.session_state:
+        st.session_state.pool_cols = []
+    if "target" not in st.session_state:
+        st.session_state.target = None
+    if "cat_cols" not in st.session_state:
+        st.session_state.cat_cols = []
+    if "num_cols" not in st.session_state:
+        st.session_state.num_cols = []
+    if "date_cols" not in st.session_state:
+        st.session_state.date_cols = []
