@@ -8,6 +8,10 @@ from pandas.api.types import (
     is_datetime64_any_dtype,
 )
 import io
+import plotly.express as px
+import missingno as msno
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 st.set_page_config(page_title="Auto EDA (Local)", layout="wide")
 ensure_state()
@@ -107,6 +111,25 @@ def update_date_cols():
     else:
         st.session_state.date_cols_select = st.session_state.date_cols.copy()
 
+def features_info(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Create a detailed DataFrame with comprehensive column information
+    """
+    info_df = pd.DataFrame({
+        'Column': df.columns,
+        'Non-Null Count': df.count().values,
+        'Null Count': df.isnull().sum().values,
+        'Unique Values': [df[col].nunique() for col in df.columns],
+        'Dtype': df.dtypes.values,
+        'First Value': [df[col].dropna().iloc[0] if df[col].dropna().shape[0] > 0 else None for col in df.columns],
+    })
+
+    # Add percentage columns
+    info_df['Non-Null %'] = (info_df['Non-Null Count'] / len(df) * 100).round(2)
+    info_df['Null %'] = (info_df['Null Count'] / len(df) * 100).round(2)
+
+    return info_df
+
 # --- Load file ONLY when it changes ---
 if uploaded:
     data = uploaded.getvalue()
@@ -121,6 +144,10 @@ if uploaded:
 if not st.session_state.df.empty:
     df = st.session_state.df
     st.dataframe(df, use_container_width=True)
+    st.write(f'rows: {df.shape[0]}, columns: {df.shape[1]}')
+    st.write(f'duplicate rows: {df.duplicated().sum()}')
+    st.dataframe(features_info(df), use_container_width=True)
+
 
     # helper sets
     pool = set(st.session_state.pool_cols)
@@ -168,6 +195,32 @@ if not st.session_state.df.empty:
         on_change=update_date_cols,
     )
 
+    if st.session_state.target:
+        #plot bar betwen ratio between classes
+        st.write("Target value counts:")
+        target_counts = df[st.session_state.target].value_counts()
+        st.bar_chart(target_counts)
+        fig = px.bar(
+            x=target_counts.index.astype(str),
+            y=target_counts.values,
+            labels={"x": st.session_state.target, "y": "Count"},
+            title="Target Value Counts"
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+    sns.heatmap(
+        df.isnull(),
+        cbar=False,
+        yticklabels=False,
+        cmap='viridis',
+    )
+    ax.set_title("Missing Values Heatmap")
+
+    st.pyplot(fig)
+    # fig,ax = plt.subplots(figsize=(12,6))
+    # msno.matrix(df, ax=ax)
+    # st.pyplot(fig)
     # Optional: show current state
     # st.write("target:", st.session_state.target)
     # st.write("cat_cols:", st.session_state.cat_cols)
